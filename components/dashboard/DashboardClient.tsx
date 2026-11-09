@@ -28,13 +28,16 @@ import {
   ReceiptText,
   Sparkles,
   CheckCircle2,
-  PieChart,
+  SlidersHorizontal,
+  ArrowLeftRight,
 } from "lucide-react";
 import Link from "next/link";
 import type { Profile, Wallet as WalletType } from "@/types/database";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import WalletModal from "@/components/wallets/WalletModal";
+import WalletTransferModal from "@/components/wallets/WalletTransferModal";
+import WalletAdjustmentModal from "@/components/wallets/WalletAdjustmentModal";
 
 interface Props {
   profile: Profile | null;
@@ -83,7 +86,13 @@ export default function DashboardClient({
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [txFilter, setTxFilter] = useState<"all" | "income" | "expense">("all");
   const [chartView, setChartView] = useState<"monthly" | "quarterly">("monthly");
+
+  // Modals state
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferSourceWalletId, setTransferSourceWalletId] = useState("");
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+  const [selectedWalletForAdjustment, setSelectedWalletForAdjustment] = useState<WalletType | null>(null);
 
   const [dateLabel, setDateLabel] = useState("");
   const [monthYear, setMonthYear] = useState("");
@@ -151,7 +160,6 @@ export default function DashboardClient({
         Pengeluaran: parseFloat(monthly[i].expense.toFixed(2)),
       }));
     } else {
-      // Quarterly view
       const quarters = [
         { name: "Q1 (Jan-Mar)", income: 0, expense: 0 },
         { name: "Q2 (Apr-Jun)", income: 0, expense: 0 },
@@ -197,17 +205,33 @@ export default function DashboardClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-700 shadow-xs">
             <Calendar className="w-4 h-4 text-emerald-700" />
             <span>{monthYear || "Bulan Ini"}</span>
           </div>
+
+          {/* Quick Transfer Button in Header */}
+          {wallets.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => {
+                setTransferSourceWalletId(wallets[0]?.id || "");
+                setIsTransferModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+            >
+              <ArrowLeftRight className="w-4 h-4 text-sky-700" />
+              Transfer Saldo
+            </button>
+          )}
+
           <Link
             href="/transactions/new"
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.99]"
           >
             <Plus className="w-4 h-4" />
-            Catat Transaksi Baru
+            Catat Transaksi
           </Link>
         </div>
       </div>
@@ -376,7 +400,9 @@ export default function DashboardClient({
                 <span className="text-base font-bold font-display text-slate-900 tabular-nums">
                   {savingsRatio}%
                 </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">Surplus bersih Rp {formatRupiah(cashflow).replace("Rp ", "")}/bln</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Surplus Rp {formatRupiah(cashflow).replace("Rp ", "")}/bln
+                </span>
               </div>
             </div>
           </div>
@@ -491,13 +517,29 @@ export default function DashboardClient({
               Distribusi dana pada akun bank, dompet digital, dan kas tunai
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsWalletModalOpen(true)}
-            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
-          >
-            <Plus className="w-3.5 h-3.5" /> Tambah Dompet Baru
-          </button>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {wallets.length >= 2 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTransferSourceWalletId(wallets[0]?.id || "");
+                  setIsTransferModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 text-xs font-semibold transition-all shadow-xs cursor-pointer"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-sky-700" />
+                Transfer Antar Dompet
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsWalletModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Tambah Dompet
+            </button>
+          </div>
         </div>
 
         {wallets.length === 0 ? (
@@ -524,7 +566,7 @@ export default function DashboardClient({
               return (
                 <div
                   key={wallet.id}
-                  className="bg-white border border-slate-200/90 rounded-2xl p-4.5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between h-[152px] group"
+                  className="bg-white border border-slate-200/90 rounded-2xl p-4.5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between h-[156px] group relative"
                 >
                   <div className="flex items-center justify-between">
                     <div
@@ -533,9 +575,27 @@ export default function DashboardClient({
                     >
                       <IconComp className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-600 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/70 uppercase tracking-wider">
-                      {getWalletTypeLabel(wallet.type)}
-                    </span>
+
+                    <div className="flex items-center gap-1">
+                      {/* Koreksi Saldo Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedWalletForAdjustment(wallet);
+                          setIsAdjustmentModalOpen(true);
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                        title="Koreksi / Sesuaikan Saldo"
+                        aria-label="Koreksi Saldo"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                      </button>
+
+                      <span className="text-[10px] font-bold text-slate-600 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/70 uppercase tracking-wider">
+                        {getWalletTypeLabel(wallet.type)}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="my-1">
@@ -555,9 +615,25 @@ export default function DashboardClient({
 
                   <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
                     <span className="text-[11px] text-slate-400">Saldo</span>
-                    <span className="font-bold font-display tabular-nums text-base text-slate-900">
-                      {balanceVisible ? formatRupiah(wallet.balance) : "Rp ••••••••"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold font-display tabular-nums text-base text-slate-900">
+                        {balanceVisible ? formatRupiah(wallet.balance) : "Rp ••••••••"}
+                      </span>
+                      {wallets.length >= 2 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTransferSourceWalletId(wallet.id);
+                            setIsTransferModalOpen(true);
+                          }}
+                          className="text-[11px] font-semibold text-sky-700 hover:text-sky-900 hover:underline cursor-pointer"
+                          title="Transfer dari akun ini"
+                        >
+                          Transfer ↗
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -567,7 +643,7 @@ export default function DashboardClient({
             <button
               type="button"
               onClick={() => setIsWalletModalOpen(true)}
-              className="border-2 border-dashed border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/20 rounded-2xl p-4.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all h-[152px] group"
+              className="border-2 border-dashed border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/20 rounded-2xl p-4.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all h-[156px] group"
             >
               <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-emerald-100 flex items-center justify-center text-slate-500 group-hover:text-emerald-700 transition-colors mb-2">
                 <Plus className="w-5 h-5" />
@@ -641,43 +717,81 @@ export default function DashboardClient({
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {filteredTxs.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-slate-50/80 transition-colors"
-                >
-                  {/* Category icon container */}
+              {filteredTxs.map((tx) => {
+                const isTransfer = tx.categories?.name === "Transfer Antar Dompet";
+                const isAdjustment = tx.categories?.name === "Penyesuaian Saldo";
+
+                return (
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-xs font-bold shadow-xs"
-                    style={{ backgroundColor: tx.categories?.color || "#047857" }}
+                    key={tx.id}
+                    className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-slate-50/80 transition-colors"
                   >
-                    {tx.categories?.name?.[0]?.toUpperCase() ?? "?"}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 truncate">
-                      {tx.note || tx.categories?.name || "Transaksi"}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {tx.categories?.name} • {tx.wallets?.name}
-                    </p>
-                  </div>
-
-                  <div className="text-right flex-shrink-0">
-                    <p
-                      className={`font-bold tabular-nums text-sm font-display ${
-                        tx.type === "income" ? "text-emerald-700" : "text-rose-700"
+                    {/* Category icon container */}
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-xs font-bold shadow-xs ${
+                        isTransfer
+                          ? "bg-sky-600"
+                          : isAdjustment
+                          ? "bg-slate-600"
+                          : ""
                       }`}
+                      style={{
+                        backgroundColor:
+                          !isTransfer && !isAdjustment
+                            ? tx.categories?.color || "#047857"
+                            : undefined,
+                      }}
                     >
-                      {tx.type === "income" ? "+" : "-"}{formatRupiah(tx.amount)}
-                    </p>
-                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      {tx.status === "completed" ? "Selesai" : tx.status === "pending" ? "Pending" : "Batal"}
-                    </span>
+                      {isTransfer ? (
+                        <ArrowLeftRight className="w-4 h-4 text-white" />
+                      ) : isAdjustment ? (
+                        <SlidersHorizontal className="w-4 h-4 text-white" />
+                      ) : (
+                        tx.categories?.name?.[0]?.toUpperCase() ?? "?"
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-slate-900 truncate">
+                          {tx.note || tx.categories?.name || "Transaksi"}
+                        </p>
+                        {isTransfer && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                            Transfer
+                          </span>
+                        )}
+                        {isAdjustment && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                            Koreksi Saldo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                        {tx.categories?.name} • {tx.wallets?.name}
+                      </p>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <p
+                        className={`font-bold tabular-nums text-sm font-display ${
+                          isTransfer
+                            ? "text-sky-700"
+                            : tx.type === "income"
+                            ? "text-emerald-700"
+                            : "text-rose-700"
+                        }`}
+                      >
+                        {tx.type === "income" ? "+" : "-"}{formatRupiah(tx.amount)}
+                      </p>
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        {tx.status === "completed" ? "Selesai" : tx.status === "pending" ? "Pending" : "Batal"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -692,10 +806,31 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* ── Wallet Modal ── */}
+      {/* ── Modals ── */}
+      {/* 1. Tambah Dompet */}
       <WalletModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
+        userId={profile?.id}
+      />
+
+      {/* 2. Transfer Antar Dompet */}
+      <WalletTransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        wallets={wallets}
+        defaultSourceWalletId={transferSourceWalletId}
+        userId={profile?.id}
+      />
+
+      {/* 3. Koreksi Saldo Dompet */}
+      <WalletAdjustmentModal
+        isOpen={isAdjustmentModalOpen}
+        onClose={() => {
+          setIsAdjustmentModalOpen(false);
+          setSelectedWalletForAdjustment(null);
+        }}
+        wallet={selectedWalletForAdjustment}
         userId={profile?.id}
       />
     </div>

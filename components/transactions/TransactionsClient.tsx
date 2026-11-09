@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Trash2,
   Calendar,
-  Filter,
+  ArrowLeftRight,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -24,21 +25,24 @@ import { id as localeId } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import ProgressBar from "@/components/ui/ProgressBar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import WalletTransferModal from "@/components/wallets/WalletTransferModal";
 import { useToast } from "@/components/ui/ToastProvider";
 
 interface Props {
+  userId?: string;
   transactions: any[];
   totalCount: number;
   currentPage: number;
   perPage: number;
   totalIncome: number;
   totalExpense: number;
-  wallets: { id: string; name: string }[];
+  wallets: any[];
   categories: { id: string; name: string }[];
   currentParams: Record<string, string | undefined>;
 }
 
 export default function TransactionsClient({
+  userId,
   transactions,
   totalCount,
   currentPage,
@@ -65,6 +69,9 @@ export default function TransactionsClient({
   // Crucial alert for deleting transaction
   const [txToDelete, setTxToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Transfer modal state
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   useEffect(() => {
     if (!currentParams.month) {
@@ -182,13 +189,26 @@ export default function TransactionsClient({
           </p>
         </div>
 
-        <Link
-          href="/transactions/new"
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm transition-all active:scale-[0.99]"
-        >
-          <Plus className="w-4 h-4" />
-          Catat Transaksi Baru
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {wallets.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => setIsTransferModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+            >
+              <ArrowLeftRight className="w-4 h-4 text-sky-700" />
+              Transfer Saldo
+            </button>
+          )}
+
+          <Link
+            href="/transactions/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm transition-all active:scale-[0.99]"
+          >
+            <Plus className="w-4 h-4" />
+            Catat Transaksi
+          </Link>
+        </div>
       </div>
 
       {/* ── Top Metric Cards ── */}
@@ -418,66 +438,109 @@ export default function TransactionsClient({
 
                   {/* Day transactions */}
                   <div className="divide-y divide-slate-100">
-                    {txs.map((tx) => (
-                      <div
-                        key={tx.id}
-                        className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-slate-50/80 transition-colors group"
-                      >
-                        {/* Category icon */}
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-xs flex-shrink-0"
-                          style={{ backgroundColor: tx.categories?.color || "#047857" }}
-                        >
-                          {tx.categories?.name?.[0]?.toUpperCase() ?? "?"}
-                        </div>
+                    {txs.map((tx) => {
+                      const isTransfer = tx.categories?.name === "Transfer Antar Dompet";
+                      const isAdjustment = tx.categories?.name === "Penyesuaian Saldo";
 
-                        {/* Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-slate-900 truncate">
-                              {tx.note || tx.categories?.name || "Transaksi"}
+                      return (
+                        <div
+                          key={tx.id}
+                          className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-slate-50/80 transition-colors group"
+                        >
+                          {/* Category icon */}
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-xs flex-shrink-0 ${
+                              isTransfer
+                                ? "bg-sky-600"
+                                : isAdjustment
+                                ? "bg-slate-600"
+                                : ""
+                            }`}
+                            style={{
+                              backgroundColor:
+                                !isTransfer && !isAdjustment
+                                  ? tx.categories?.color || "#047857"
+                                  : undefined,
+                            }}
+                          >
+                            {isTransfer ? (
+                              <ArrowLeftRight className="w-4 h-4 text-white" />
+                            ) : isAdjustment ? (
+                              <SlidersHorizontal className="w-4 h-4 text-white" />
+                            ) : (
+                              tx.categories?.name?.[0]?.toUpperCase() ?? "?"
+                            )}
+                          </div>
+
+                          {/* Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-bold text-slate-900 truncate">
+                                {tx.note || tx.categories?.name || "Transaksi"}
+                              </p>
+                              {isTransfer && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                                  {tx.type === "income" ? "Transfer Masuk" : "Transfer Keluar"}
+                                </span>
+                              )}
+                              {isAdjustment && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                  Koreksi Saldo
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">
+                              <strong className="text-slate-600 font-semibold">{tx.wallets?.name}</strong> •{" "}
+                              {formatTime(tx.transaction_date)}
                             </p>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
-                              {tx.categories?.name}
+                          </div>
+
+                          {/* Amount */}
+                          <div className="text-right flex-shrink-0">
+                            <p
+                              className={`font-bold tabular-nums text-sm font-display ${
+                                isTransfer
+                                  ? "text-sky-700"
+                                  : tx.type === "income"
+                                  ? "text-emerald-700"
+                                  : "text-rose-700"
+                              }`}
+                            >
+                              {tx.type === "income" ? "+" : "-"}
+                              {formatRupiah(tx.amount)}
+                            </p>
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider block ${
+                                isTransfer
+                                  ? "text-sky-600"
+                                  : tx.type === "income"
+                                  ? "text-emerald-600"
+                                  : "text-rose-600"
+                              }`}
+                            >
+                              {isTransfer
+                                ? tx.type === "income"
+                                  ? "Transfer In"
+                                  : "Transfer Out"
+                                : tx.type === "income"
+                                ? "Pemasukan"
+                                : "Pengeluaran"}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400 mt-0.5 truncate">
-                            <strong className="text-slate-600 font-semibold">{tx.wallets?.name}</strong> •{" "}
-                            {formatTime(tx.transaction_date)}
-                          </p>
-                        </div>
 
-                        {/* Amount */}
-                        <div className="text-right flex-shrink-0">
-                          <p
-                            className={`font-bold tabular-nums text-sm font-display ${
-                              tx.type === "income" ? "text-emerald-700" : "text-rose-700"
-                            }`}
+                          {/* Crucial Action: Delete Button */}
+                          <button
+                            type="button"
+                            onClick={() => setTxToDelete(tx)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer flex-shrink-0 ml-1"
+                            title="Hapus Transaksi Ini"
+                            aria-label="Hapus Transaksi"
                           >
-                            {tx.type === "income" ? "+" : "-"}
-                            {formatRupiah(tx.amount)}
-                          </p>
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-wider block ${
-                              tx.type === "income" ? "text-emerald-600" : "text-rose-600"
-                            }`}
-                          >
-                            {tx.type === "income" ? "Pemasukan" : "Pengeluaran"}
-                          </span>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-
-                        {/* Crucial Action: Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => setTxToDelete(tx)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer flex-shrink-0 ml-1"
-                          title="Hapus Transaksi Ini"
-                          aria-label="Hapus Transaksi"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -549,6 +612,14 @@ export default function TransactionsClient({
         loading={isDeleting}
         onConfirm={handleDeleteConfirm}
         onClose={() => setTxToDelete(null)}
+      />
+
+      {/* ── Wallet Transfer Modal ── */}
+      <WalletTransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        wallets={wallets}
+        userId={userId}
       />
     </div>
   );

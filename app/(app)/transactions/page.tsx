@@ -52,7 +52,10 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
     .lte("transaction_date", monthEnd)
     .eq("status", "completed");
 
-  const { data: wallets } = await supabase.from("wallets").select("id,name").eq("user_id", user.id);
+  const { data: wallets } = await supabase
+    .from("wallets")
+    .select("id, name, balance, type, color, icon")
+    .eq("user_id", user.id);
   const { data: categories } = await supabase.from("categories").select("id,name").or(`user_id.is.null,user_id.eq.${user.id}`);
 
   type SummaryRow = { type: string; amount: number };
@@ -63,13 +66,14 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
 
   return (
     <TransactionsClient
+      userId={user.id}
       transactions={transactions ?? []}
       totalCount={count ?? 0}
       currentPage={page}
       perPage={perPage}
       totalIncome={totalIncome}
       totalExpense={totalExpense}
-      wallets={wallets ?? []}
+      wallets={(wallets as any) ?? []}
       categories={categories ?? []}
       currentParams={params}
     />
