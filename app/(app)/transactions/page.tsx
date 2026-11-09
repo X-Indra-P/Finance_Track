@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import TransactionsClient from "@/components/transactions/TransactionsClient";
+import { isTransferTransaction } from "@/lib/utils/transaction";
 
 export const metadata = { title: "Riwayat Transaksi" };
 
@@ -43,10 +44,10 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
 
   const { data: transactions, count } = await query;
 
-  // Summary stats for current month (all, unfiltered)
+  // Summary stats for current month (all, unfiltered, excluding transfers)
   const { data: summaryTxs } = await supabase
     .from("transactions")
-    .select("type, amount")
+    .select("type, amount, note, categories(name)")
     .eq("user_id", user.id)
     .gte("transaction_date", monthStart)
     .lte("transaction_date", monthEnd)
@@ -58,11 +59,14 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
     .eq("user_id", user.id);
   const { data: categories } = await supabase.from("categories").select("id,name").or(`user_id.is.null,user_id.eq.${user.id}`);
 
-  type SummaryRow = { type: string; amount: number };
-  const rows: SummaryRow[] = (summaryTxs as SummaryRow[] | null) ?? [];
+  const rows = (summaryTxs as any[]) ?? [];
 
-  const totalIncome = rows.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = rows.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalIncome = rows
+    .filter((t) => t.type === "income" && !isTransferTransaction(t))
+    .reduce((s, t) => s + t.amount, 0);
+  const totalExpense = rows
+    .filter((t) => t.type === "expense" && !isTransferTransaction(t))
+    .reduce((s, t) => s + t.amount, 0);
 
   return (
     <TransactionsClient

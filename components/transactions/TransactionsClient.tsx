@@ -27,6 +27,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import WalletTransferModal from "@/components/wallets/WalletTransferModal";
 import { useToast } from "@/components/ui/ToastProvider";
+import { isTransferTransaction } from "@/lib/utils/transaction";
 
 interface Props {
   userId?: string;
@@ -333,14 +334,14 @@ export default function TransactionsClient({
         </div>
 
         {/* Row 2: Month, Wallet, Category, Reset */}
-        <div className="flex flex-wrap gap-2.5 items-center pt-1 border-t border-slate-100 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2.5 items-center pt-2 border-t border-slate-100 text-xs">
           <div className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-xl bg-white shadow-xs">
-            <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+            <Calendar className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
             <input
               type="month"
               value={currentMonth}
               onChange={(e) => updateParam("month", e.target.value)}
-              className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+              className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer w-full"
             />
           </div>
 
@@ -373,10 +374,10 @@ export default function TransactionsClient({
           <button
             type="button"
             onClick={resetFilters}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors ml-auto cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors sm:ml-auto cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reset
+            Reset Filter
           </button>
         </div>
       </div>
@@ -409,10 +410,10 @@ export default function TransactionsClient({
         ) : (
           <>
             {grouped.map(([day, txs]) => {
-              const daySubtotal = txs.reduce(
-                (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
-                0
-              );
+              const daySubtotal = txs.reduce((s, t) => {
+                if (isTransferTransaction(t)) return s; // Exclude internal transfers from operational daily subtotal
+                return s + (t.type === "income" ? t.amount : -t.amount);
+              }, 0);
               return (
                 <div key={day}>
                   {/* Day header */}

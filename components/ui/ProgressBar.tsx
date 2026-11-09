@@ -11,7 +11,7 @@ interface ProgressBarProps {
 export default function ProgressBar({
   loading = true,
   className = "",
-  color = "bg-gradient-to-r from-[var(--color-primary-brand)] via-[var(--color-primary-light)] to-[var(--color-primary-mint)]",
+  color = "bg-emerald-600",
   height = "h-1",
 }: ProgressBarProps) {
   if (!loading) return null;

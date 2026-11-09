@@ -280,3 +280,4 @@ export async function executeWalletAdjustment(
   if (insertError) throw new Error(insertError.message);
   return { success: true, difference };
 }
+

@@ -209,15 +209,9 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
   };
 
   return (
-    <div className="max-w-[1100px] mx-auto pb-10">
+    <div className="max-w-2xl mx-auto pb-12">
       {/* Page header */}
       <div className="mb-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 mb-2.5">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-          <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-            Pencatatan Keuangan Kilat
-          </span>
-        </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display tracking-tight">
           Catat Transaksi Baru
         </h1>
@@ -226,9 +220,9 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="space-y-6">
         {/* ── Main Form ── */}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Action Progress Bar */}
           {loading && (
             <div className="rounded-xl overflow-hidden shadow-xs">
@@ -249,8 +243,8 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                   selectedType === t
                     ? t === "expense"
-                      ? "bg-rose-50 text-rose-700 border border-rose-200 shadow-xs"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs"
+                      ? "bg-rose-50 text-rose-800 border border-rose-200 shadow-xs"
+                      : "bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -319,18 +313,30 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
             )}
 
             {/* Quick amounts */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <span className="text-xs text-slate-400 self-center mr-1">Cepat:</span>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-slate-400 mr-1">Cepat:</span>
               {QUICK_AMOUNTS.map((amt) => (
                 <button
                   key={amt}
                   type="button"
                   onClick={() => addQuickAmount(amt)}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer active:scale-95"
                 >
                   +{formatRupiah(amt)}
                 </button>
               ))}
+              {currentAmount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawAmount("");
+                    setValue("amount", 0, { shouldValidate: true });
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-500 transition-colors cursor-pointer ml-auto"
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
 
@@ -355,7 +361,7 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
                   key={w.id}
                   type="button"
                   onClick={() => setValue("wallet_id", w.id, { shouldValidate: true })}
-                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between h-[76px] ${
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[76px] ${
                     selectedWalletId === w.id
                       ? "border-emerald-600 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-600/20"
                       : "border-slate-200 hover:border-slate-300 bg-white"
@@ -374,7 +380,7 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
                       </span>
                     )}
                   </div>
-                  <div>
+                  <div className="mt-2">
                     <p className="text-xs font-bold text-slate-900 truncate">{w.name}</p>
                     <p className="text-[11px] text-slate-500 tabular-nums truncate">
                       {formatRupiah(w.balance || 0)}
@@ -392,7 +398,7 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                Kategori <span className="text-rose-500">*</span>
+                Pilih Kategori <span className="text-rose-500">*</span>
               </label>
               <button
                 type="button"
@@ -403,25 +409,25 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {filteredCategories.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => setValue("category_id", c.id, { shouldValidate: true })}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
                     selectedCategory === c.id
                       ? "border-emerald-600 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-600/20"
                       : "border-slate-200 hover:border-slate-300 bg-white"
                   }`}
                 >
                   <span
-                    className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
                     style={{ backgroundColor: c.color || "#047857" }}
                   >
                     {c.name[0]?.toUpperCase()}
                   </span>
-                  <span className="text-xs font-semibold text-slate-800 truncate">{c.name}</span>
+                  <span className="text-xs font-semibold text-slate-800 leading-snug">{c.name}</span>
                 </button>
               ))}
             </div>
@@ -434,11 +440,11 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                Catatan / Deskripsi (Opsional)
+                Catatan / Keterangan (Opsional)
               </label>
               <input
                 type="text"
-                placeholder="Contoh: Makan siang nasi padang, Gaji bulanan, dll."
+                placeholder="Contoh: Makan siang nasi padang, Gaji bulanan, dsb."
                 value={watch("note") || ""}
                 onChange={(e) => setValue("note", e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
@@ -484,46 +490,44 @@ export default function NewTransactionClient({ userId, wallets, categories, rece
           </div>
         </form>
 
-        {/* ── Sidebar: Recent Records ── */}
-        <div className="w-full lg:w-80 space-y-4">
+        {/* ── Recent Records Mini Card ── */}
+        {recentTxs.length > 0 && (
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 font-display mb-3">
-              Catatan Terakhir
-            </h3>
-            {recentTxs.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center">Belum ada riwayat transaksi.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {recentTxs.slice(0, 5).map((t) => (
-                  <div key={t.id} className="py-2.5 flex items-center justify-between text-xs">
-                    <div className="truncate mr-2">
-                      <p className="font-semibold text-slate-900 truncate">
-                        {t.note || t.categories?.name}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        {t.categories?.name} • {formatRelativeDay(t.transaction_date)}
-                      </p>
-                    </div>
-                    <span
-                      className={`font-bold tabular-nums flex-shrink-0 ${
-                        t.type === "income" ? "text-emerald-700" : "text-rose-700"
-                      }`}
-                    >
-                      {t.type === "income" ? "+" : "-"}
-                      {formatRupiah(t.amount)}
-                    </span>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-display">
+                Catatan Terakhir Dicatat
+              </h3>
+              <Link
+                href="/transactions"
+                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+              >
+                Lihat Semua Riwayat →
+              </Link>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {recentTxs.slice(0, 3).map((t) => (
+                <div key={t.id} className="py-2.5 flex items-center justify-between text-xs">
+                  <div className="truncate mr-2">
+                    <p className="font-semibold text-slate-900 truncate">
+                      {t.note || t.categories?.name}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {t.categories?.name} • {formatRelativeDay(t.transaction_date)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-            <Link
-              href="/transactions"
-              className="mt-3 block text-center text-xs font-semibold text-emerald-700 hover:text-emerald-800 pt-2 border-t border-slate-100"
-            >
-              Lihat Semua Riwayat →
-            </Link>
+                  <span
+                    className={`font-bold tabular-nums flex-shrink-0 ${
+                      t.type === "income" ? "text-emerald-700" : "text-rose-700"
+                    }`}
+                  >
+                    {t.type === "income" ? "+" : "-"}
+                    {formatRupiah(t.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Modals ── */}

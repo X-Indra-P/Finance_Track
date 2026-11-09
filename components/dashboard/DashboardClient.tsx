@@ -38,14 +38,15 @@ import { id as localeId } from "date-fns/locale";
 import WalletModal from "@/components/wallets/WalletModal";
 import WalletTransferModal from "@/components/wallets/WalletTransferModal";
 import WalletAdjustmentModal from "@/components/wallets/WalletAdjustmentModal";
+import { isTransferTransaction } from "@/lib/utils/transaction";
 
 interface Props {
   profile: Profile | null;
   wallets: WalletType[];
   currentMonthTxs: any[];
-  prevMonthTxs: { type: string; amount: number }[];
+  prevMonthTxs: any[];
   recentTxs: any[];
-  yearlyTxs: { type: string; amount: number; transaction_date: string }[];
+  yearlyTxs: any[];
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
@@ -110,25 +111,25 @@ export default function DashboardClient({
     return trimmed.length > 1 ? trimmed : "Sobat DompetKu";
   }, [profile]);
 
-  /* ── Computed stats ── */
+  /* ── Computed stats (Excludes internal wallet-to-wallet transfers) ── */
   const totalBalance = wallets.reduce((s, w) => s + (w.balance || 0), 0);
 
   const { totalIncome, totalExpense } = useMemo(() => {
     const totalIncome = currentMonthTxs
-      .filter((t) => t.type === "income")
+      .filter((t) => t.type === "income" && !isTransferTransaction(t))
       .reduce((s, t) => s + t.amount, 0);
     const totalExpense = currentMonthTxs
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "expense" && !isTransferTransaction(t))
       .reduce((s, t) => s + t.amount, 0);
     return { totalIncome, totalExpense };
   }, [currentMonthTxs]);
 
   const { prevIncome, prevExpense } = useMemo(() => {
     const prevIncome = prevMonthTxs
-      .filter((t) => t.type === "income")
+      .filter((t) => t.type === "income" && !isTransferTransaction(t))
       .reduce((s, t) => s + t.amount, 0);
     const prevExpense = prevMonthTxs
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "expense" && !isTransferTransaction(t))
       .reduce((s, t) => s + t.amount, 0);
     return { prevIncome, prevExpense };
   }, [prevMonthTxs]);
@@ -144,12 +145,13 @@ export default function DashboardClient({
   const savingsRatioNum = totalIncome > 0 ? Math.max(0, (cashflow / totalIncome) * 100) : 0;
   const savingsRatio = savingsRatioNum.toFixed(0);
 
-  /* ── Yearly chart data ── */
+  /* ── Yearly chart data (Excludes internal wallet transfers) ── */
   const chartData = useMemo(() => {
     if (chartView === "monthly") {
       const monthly: Record<number, { income: number; expense: number }> = {};
       for (let m = 0; m < 12; m++) monthly[m] = { income: 0, expense: 0 };
       yearlyTxs.forEach((t) => {
+        if (isTransferTransaction(t)) return; // Exclude internal transfers
         const m = new Date(t.transaction_date).getMonth();
         if (t.type === "income") monthly[m].income += t.amount / 1_000_000;
         else monthly[m].expense += t.amount / 1_000_000;
@@ -167,6 +169,7 @@ export default function DashboardClient({
         { name: "Q4 (Okt-Des)", income: 0, expense: 0 },
       ];
       yearlyTxs.forEach((t) => {
+        if (isTransferTransaction(t)) return; // Exclude internal transfers
         const m = new Date(t.transaction_date).getMonth();
         const qIdx = Math.floor(m / 3);
         if (t.type === "income") quarters[qIdx].income += t.amount / 1_000_000;
@@ -191,23 +194,20 @@ export default function DashboardClient({
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              {dateLabel || "Memuat tanggal..."}
-            </span>
-          </div>
+          <span className="text-xs font-semibold text-slate-500 block mb-1">
+            {dateLabel || "Memuat tanggal..."}
+          </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display tracking-tight">
-            Halo, {userName}! 👋
+            Halo, {userName}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Kondisi keuanganmu bulan ini terpantau sehat dan terkontrol.
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Ringkasan saldo akun, pemasukan, pengeluaran, dan arus kas bulan ini.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-700 shadow-xs">
-            <Calendar className="w-4 h-4 text-emerald-700" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 shadow-xs">
+            <Calendar className="w-3.5 h-3.5 text-emerald-700" />
             <span>{monthYear || "Bulan Ini"}</span>
           </div>
 
@@ -221,14 +221,14 @@ export default function DashboardClient({
               }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-[0.99] cursor-pointer"
             >
-              <ArrowLeftRight className="w-4 h-4 text-sky-700" />
+              <ArrowLeftRight className="w-3.5 h-3.5 text-sky-700" />
               Transfer Saldo
             </button>
           )}
 
           <Link
             href="/transactions/new"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all active:scale-[0.99]"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-[0.99]"
           >
             <Plus className="w-4 h-4" />
             Catat Transaksi
@@ -444,36 +444,50 @@ export default function DashboardClient({
 
         {/* Right: Cashflow Summary Card */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
-                <TrendingUp className="w-5 h-5" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
+                <TrendingUp className="w-4 h-4" />
               </div>
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
                   cashflow >= 0
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-rose-50 text-rose-800 border border-rose-200"
                 }`}
               >
-                {cashflow >= 0 ? "✓ Surplus Kas Aktif" : "⚠ Defisit Kas"}
+                {cashflow >= 0 ? "Surplus Kas" : "Defisit Kas"}
               </span>
             </div>
 
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Selisih Bersih (Cashflow)
-            </p>
-            <div
-              className={`text-3xl font-extrabold font-display tracking-tight tabular-nums ${
-                cashflow >= 0 ? "text-emerald-700" : "text-rose-700"
-              }`}
-            >
-              {cashflow >= 0 ? "+" : ""}{formatRupiah(cashflow)}
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Selisih Bersih (Cashflow)
+              </p>
+              <div
+                className={`text-2xl sm:text-3xl font-extrabold font-display tracking-tight tabular-nums ${
+                  cashflow >= 0 ? "text-emerald-700" : "text-rose-700"
+                }`}
+              >
+                {cashflow >= 0 ? "+" : ""}{formatRupiah(cashflow)}
+              </div>
+            </div>
+
+            {/* Income & Expense Breakdown Mini Box */}
+            <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+              <div>
+                <span className="text-[10px] font-semibold text-slate-400 block uppercase">Pemasukan</span>
+                <span className="font-bold text-emerald-700 tabular-nums">+{formatRupiah(totalIncome)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-semibold text-slate-400 block uppercase">Pengeluaran</span>
+                <span className="font-bold text-rose-700 tabular-nums">-{formatRupiah(totalExpense)}</span>
+              </div>
             </div>
 
             {/* Savings Ratio Indicator */}
-            <div className="mt-5 pt-4 border-t border-slate-100">
-              <div className="flex justify-between items-center text-xs mb-1.5">
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-slate-700">Rasio Tabungan Bulan Ini:</span>
                 <span className="font-bold text-emerald-700">{savingsRatio}%</span>
               </div>
@@ -486,20 +500,20 @@ export default function DashboardClient({
                 />
               </div>
 
-              <div className="mt-2 flex justify-between text-[11px] text-slate-400">
-                <span>Target Ideal Sehat</span>
+              <div className="flex justify-between text-[11px] text-slate-400">
+                <span>Target Ideal</span>
                 <span className="font-semibold text-slate-600">≥ 20%</span>
               </div>
             </div>
           </div>
 
-          {/* Contextual Financial Stewardship Tip */}
-          <div className="mt-5 p-3 rounded-xl bg-emerald-50/60 border border-emerald-100/80 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+          {/* Contextual Financial Tip */}
+          <div className="mt-5 p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-700 leading-relaxed flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
             <p className="text-[11px]">
               {cashflow >= 0
-                ? "Bagus! Arus kas bulan ini dalam kondisi surplus. Sisihkan surplus ke rekening tabungan atau investasi."
-                : "Perhatian: Pengeluaran bulan ini melebihi pemasukan. Tinjau kembali pos pengeluaran sekunder Anda."}
+                ? "Arus kas bulan ini dalam kondisi surplus. Anda dapat menyisihkan dana ke tabungan atau investasi."
+                : "Pengeluaran bulan ini melebihi pemasukan. Pertimbangkan untuk membatasi pengeluaran non-prioritas."}
             </p>
           </div>
         </div>
@@ -560,7 +574,15 @@ export default function DashboardClient({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            className={`grid gap-4 ${
+              wallets.length === 1
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                : wallets.length === 2
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+            }`}
+          >
             {wallets.map((wallet) => {
               const IconComp = getWalletIcon(wallet.type);
               return (

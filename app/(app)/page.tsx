@@ -45,7 +45,7 @@ export default async function DashboardPage() {
   // Fetch previous month totals for % comparison
   const { data: prevMonthTxs } = await supabase
     .from("transactions")
-    .select("type, amount")
+    .select("type, amount, note, categories(name)")
     .eq("user_id", user.id)
     .gte("transaction_date", prevStart)
     .lte("transaction_date", prevEnd)
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   const currentYear = new Date().getFullYear();
   const { data: yearlyTxs } = await supabase
     .from("transactions")
-    .select("type, amount, transaction_date")
+    .select("type, amount, transaction_date, note, categories(name)")
     .eq("user_id", user.id)
     .gte("transaction_date", `${currentYear}-01-01T00:00:00Z`)
     .lte("transaction_date", `${currentYear}-12-31T23:59:59Z`)
